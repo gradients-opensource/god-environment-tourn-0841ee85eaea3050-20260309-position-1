@@ -75,6 +75,8 @@ GAMES_TO_TASK_ID_RANGE = {
     "clobber": (700000000, 799999999),
 }
 
+MIN_VLLM_MAX_MODEL_LENGTH = 6144
+
 
 @dataclass
 class TrainingArguments(GRPOConfig):
@@ -822,6 +824,21 @@ def main():
 
         max_steps = train_request.get("max_steps", -1)
         log_info(f"max_steps: {max_steps}")
+
+        if training_args.use_vllm:
+            configured_max_len = getattr(training_args, "vllm_max_model_length", None)
+            if configured_max_len is None:
+                training_args.vllm_max_model_length = MIN_VLLM_MAX_MODEL_LENGTH
+                log_info(
+                    "vllm_max_model_length was not set; defaulting to "
+                    f"{training_args.vllm_max_model_length}"
+                )
+            elif configured_max_len < MIN_VLLM_MAX_MODEL_LENGTH:
+                training_args.vllm_max_model_length = MIN_VLLM_MAX_MODEL_LENGTH
+                log_info(
+                    f"vllm_max_model_length={configured_max_len} is too small for long prompts; "
+                    f"using {training_args.vllm_max_model_length}"
+                )
 
         # # First time rollout use default GRPO trainer
         if is_reasoning_tokenizer(tokenizer):
